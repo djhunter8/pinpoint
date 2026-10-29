@@ -202,6 +202,7 @@ body.running #habort{display:block}
     <label>Motorbike: shortest straight line (%)<input id="dt-bike" type="number" inputmode="numeric" step="5" min="5" max="100"></label>
     <label>Car: shortest straight line (%)<input id="dt-car" type="number" inputmode="numeric" step="5" min="5" max="100"></label>
     <small class="wide">Speeds and percentages only shape the rough preview before tracking. Tracking asks Google for the real routes. Typing the route km from Maps is more accurate than minutes. The key is saved in this browser only.</small>
+    <small class="wide">Version 5: free road search with a few Google checks. If you see "Quick estimate" on a result, you are on an older copy: close the tab and open the page again.</small>
     <button id="reset" class="wide act" type="button">Reset everything</button>
   </div>
   <div class="zoom"><button id="zin" type="button" aria-label="Zoom in">+</button><button id="zout" type="button" aria-label="Zoom out">−</button></div>
@@ -685,7 +686,7 @@ document.getElementById('card').addEventListener('click',function(e){
 
 /* ---------- HUD + accuracy ---------- */
 var cardOpen=true;
-var RF={wide:null,hyb:0,cal:null,narrow:0,testing:null,running:false,gen:0,sig:null,cells:null,size:0,zones:[],next:null,msg:'',deadline:0,pass:0,curSize:0,trunc:false,timer:null,
+var RF={why:'',wide:null,hyb:0,cal:null,narrow:0,testing:null,running:false,gen:0,sig:null,cells:null,size:0,zones:[],next:null,msg:'',deadline:0,pass:0,curSize:0,trunc:false,timer:null,
         accT:0,accS:0,accRaf:0,area0:1,gUsed:0,gmsg:''};
 var chip=document.getElementById('chip');
 var elStatus=document.getElementById('h-status'),elAcc=document.getElementById('h-acc'),elBar=document.getElementById('h-bar'),elSub=document.getElementById('h-sub');
@@ -878,7 +879,7 @@ async function runHybrid(rr,gen,sig,P){
     }
     retarget(stages[0].tk,stages[0].tt);
     var work=initialCells(orings);
-    if(!work||!work.cells.length) return false;
+    if(!work||!work.cells.length){RF.why='the places do not overlap for these numbers';return false;}
     RF.area0=work.cells.length*work.size*work.size;RF.pass=0;RF.cells=null;RF.zones=[];RF.sig=sig;RF.hyb=0;RF.next=null;RF.wide=null;
     var used=0,t0=Date.now(),deadline=t0+SECONDS*1000,kept=[],lastAll=null,verified=0;
     function refresh(){
@@ -909,7 +910,7 @@ async function runHybrid(rr,gen,sig,P){
         if(gen!==RF.gen) return true;
         work=nextWork();
       }
-      if(!kept.length) return false;
+      if(!kept.length){RF.why=RF.why||'no road spot matched the numbers in round '+(typeof si==='number'?si+1:'?');return false;}
       if(si===0&&lastAll) RF.wide={cells:kept.slice(),size:lastAll.size};
       if(st.g>0){
         /* Google checks the best zones, and the pairs of Google and OpenStreetMap distances re-calibrate the free router. */
@@ -953,7 +954,7 @@ async function runHybrid(rr,gen,sig,P){
         }
       }
     }
-    if(!kept.length) return false;
+    if(!kept.length){RF.why=RF.why||'no road spot matched the numbers in round '+(typeof si==='number'?si+1:'?');return false;}
     await padTo(t0+MIN_SHOW);
     if(gen!==RF.gen) return true;
     RF.running=false;hideChip();RF.cal=null;
@@ -964,7 +965,7 @@ async function runHybrid(rr,gen,sig,P){
     setForm(false);render(true);
     return true;
   }catch(err){
-    RF.cells=null;RF.zones=[];RF.testing=null;RF.hyb=0;
+    RF.cells=null;RF.zones=[];RF.testing=null;RF.hyb=0;RF.why=(err&&err.message)||'unexpected error';
     return false;
   }
 }
@@ -977,7 +978,7 @@ async function startLite(sig){
     r.i=i;r.mode=l.mode;r.kmGiven=kg>0?kg:0;r.min=mn>0?mn:0;rr.push(r);
   });
   var rough=computeZones(rr);
-  RF.sig=sig;RF.cells=null;RF.cal=null;RF.zones=[];RF.next=null;RF.gmsg='';RF.gUsed=0;
+  RF.sig=sig;RF.cells=null;RF.cal=null;RF.zones=[];RF.next=null;RF.gmsg='';RF.gUsed=0;RF.why='';
   if(!rough||!rough.zones.length){RF.msg='No overlap to test. Check the times and modes.';hud('No match','bad','Check times and travel modes');render(false);return;}
   var k=rr.length,m=Math.max(1,Math.floor(state.grun/k)),probes=[];
   rough.zones.slice(0,m).forEach(function(z){probes.push({lat:z.lat,lng:z.lng});});
@@ -1036,7 +1037,7 @@ async function startLite(sig){
         }
       }
       if(!ratios.length) return;
-      var lo=Math.max(1,Math.min.apply(null,ratios)*LITE_LO),hi=Math.max.apply(null,ratios)*LITE_HI,sMin,sMax;
+      var lo=Math.max(1,Math.min.apply(null,ratios)*LITE_LO),hi=Math.min(ring.mode==='walk'?2.5:3.2,Math.max.apply(null,ratios)*LITE_HI),sMin,sMax;
       if(ring.kmGiven){sMin=ring.kmGiven*0.97/hi;sMax=ring.kmGiven*1.03/lo;}
       else if(kmpm.length){sMin=ring.min*Math.min.apply(null,kmpm)*0.85/hi;sMax=ring.min*Math.max.apply(null,kmpm)*1.15/lo;}
       else return;
@@ -1057,7 +1058,7 @@ async function startLite(sig){
       RF.narrow=Math.min(45,100*(1-Math.sqrt(Math.min(1,a1/ref))));
       var top=z2.zones[0].area/a1;
       setAcc(Math.max(1,RF.narrow*top));
-      RF.msg='Quick estimate from '+RF.gUsed+' Google routes'+(osmN?' plus '+osmN+' free OpenStreetMap test routes':'')+'. In my tests the real spot was inside the zone about 8 times in 10. Raise the route limit in settings for a sharper result.';
+      RF.msg=(RF.why?'The road search could not run ('+RF.why+'), so this is the quick estimate. ':'')+'Quick estimate from '+RF.gUsed+' Google routes'+(osmN?' plus '+osmN+' free OpenStreetMap test routes':'')+'. In my tests the real spot was inside the zone about 8 times in 10. Raise the route limit in settings for a sharper result.';
       if(z2.zones.length>1) hud('Candidates found','lock',z2.zones.length+' possible areas. Add a place to narrow it');
       else hud('Estimate ready','lock','Calibrated with '+RF.gUsed+' real routes');
       setForm(false);
@@ -1201,7 +1202,7 @@ function render(fit){
         label:zres.zones.length>1?{text:String(n+1),color:'#fff',fontSize:'11px',fontWeight:'700',className:'znl'}:null}));
       if((useRef||useCal)&&n===0&&Html){
         add(new Html({lat:z.lat,lng:z.lng},'<span></span>','ret')).setMap(map);
-        add(new Html({lat:z.lat,lng:z.lng},'<div class="tlbox">'+(zres.zones.length>1?'Potential location #1 · '+zoneAcc(z)+'%':'Triangulated location (est.)')+'<small>'+z.lat.toFixed(5)+', '+z.lng.toFixed(5)+'</small></div>','tl')).setMap(map);
+        add(new Html({lat:z.lat,lng:z.lng},'<div class="tlbox">'+(z.area>0.5?'Wide area · '+z.area.toFixed(1)+' km² · '+zoneAcc(z)+'%':(zres.zones.length>1?'Potential location #1 · '+zoneAcc(z)+'%':'Triangulated location (est.)'))+'<small>'+z.lat.toFixed(5)+', '+z.lng.toFixed(5)+'</small></div>','tl')).setMap(map);
       }else if((useRef||useCal)&&Html){
         add(new Html({lat:z.lat,lng:z.lng},'<div class="tlbox sm">Potential location #'+(n+1)+' · '+zoneAcc(z)+'%</div>','tl low')).setMap(map);
       }
@@ -1232,9 +1233,9 @@ function render(fit){
     if(!useRef){
       rings.forEach(function(r){
         var md=MODES.filter(function(m){return m[0]===r.mode;})[0];
-        h+='<div class="dim"><span class="k" style="color:'+HEX[r.i]+'">'+LET[r.i]+'</span> '+md[1]+' route '+r.route.toFixed(2)+' km → straight '+fmtKm(r.rMin)+' to '+fmtKm(r.rMax)+'</div>';
+        h+='<div class="dim"><span class="k" style="color:'+HEX[r.i]+'">'+LET[r.i]+'</span> '+md[1]+' '+r.route.toFixed(2)+' km by road, so '+fmtKm(r.rMin)+' to '+fmtKm(r.rMax)+' as the crow flies</div>';
       });
-      if(rings.some(function(r){return r.mode!=='walk'&&!(parseFloat(state.locs[r.i].km)>0);})) h+='<div class="dim">Car and motorbike routes can be much longer than the straight line. Enter the route km for a tighter area.</div>';
+      if(rings.some(function(r){return !(parseFloat(state.locs[r.i].km)>0);})) h+='<div class="dim">Tip: type the km that Google Maps shows next to the minutes. Minutes are turned into km with an assumed speed, which can be well off.</div>';
     }
     if(rings.length<2){
       h+='<div class="hint">'+(pts.length<2?'Add a second location and its time.':'Enter minutes or route km for at least two places.')+'</div>';
@@ -1256,7 +1257,7 @@ function render(fit){
     }
   }
   var sumTxt='';
-  if((useRef||useCal)&&zres.zones&&zres.zones.length){var z0=zres.zones[0];sumTxt=(zres.zones.length>1?'Potential location #1':'Target zone')+' · accuracy '+zoneAcc(z0)+'% · '+z0.lat.toFixed(5)+', '+z0.lng.toFixed(5);}
+  if((useRef||useCal)&&zres.zones&&zres.zones.length){var z0=zres.zones[0];sumTxt=(z0.area>0.5?'Wide area '+z0.area.toFixed(1)+' km²':(zres.zones.length>1?'Potential location #1':'Target zone'))+' · accuracy '+zoneAcc(z0)+'% · '+z0.lat.toFixed(5)+', '+z0.lng.toFixed(5);}
   else if(RF.running) sumTxt='Tracking…';
   else sumTxt=rings.length>1?'Rough estimate':'Add places';
   card.className=cardOpen?'':'cc';
