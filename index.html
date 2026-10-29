@@ -199,9 +199,11 @@ var COLORS=['var(--a)','var(--b)','var(--c)'], HEX=['#4dd0ff','#ffd23f','#7dff9a
 var MODES=[['walk','🚶','Walking'],['bike','🛵','Motorbike'],['car','🚗','Car']];
 var MT={road:'roadmap',terrain:'terrain',sat:'hybrid'};
 
+/* Built-in Google key. It only works from the addresses allowed on the key in Google Cloud. */
+var HARD_KEY='AIzaSyDjmMpDGzHLptUbQVBU3kus3jnraBIPrKw';
 function defaults(){
   return {locs:[0,1,2].map(function(){return {c:'',mode:'walk',min:'',km:''}}),
-          map:'road',look:'night',gkey:'',speeds:{walk:4.3,bike:30,car:35},detour:{walk:60,bike:20,car:15}};
+          map:'road',look:'night',gkey:HARD_KEY,speeds:{walk:4.3,bike:30,car:35},detour:{walk:60,bike:20,car:15}};
 }
 function load(){
   var s=null;
@@ -213,7 +215,7 @@ function load(){
     if(p.locs) p.locs.slice(0,3).forEach(function(l,i){Object.assign(d.locs[i],l);});
     if(MT[p.map]) d.map=p.map;
     if(p.look) d.look=p.look;
-    if(typeof p.gkey==='string') d.gkey=p.gkey;
+    if(typeof p.gkey==='string'&&p.gkey) d.gkey=p.gkey;
     if(p.speeds) Object.assign(d.speeds,p.speeds);
     if(p.detour&&typeof p.detour==='object') Object.assign(d.detour,p.detour);
   }catch(e){}}
