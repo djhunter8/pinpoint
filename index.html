@@ -5,69 +5,70 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="theme-color" content="#050a12">
 <title>Pinpoint</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;700&display=swap">
 <style>
-/* Layout: compact input panel on top, a command-centre map screen fills the rest. */
+/* Layout: one-line place form on top (folds away), a command-centre map fills the rest, settings float over the map. */
 :root{
   --bg:#050a12; --panel:#08111f; --field:#050b15; --line:#143152; --glow:#1b6fa8;
   --fg:#cfe8ff; --mute:#6c8db0; --accent:#35c4ff; --warn:#ffc53d; --danger:#ff3b4a; --good:#5dff9a;
   --a:#4dd0ff; --b:#ffd23f; --c:#7dff9a; --bad:#ff7a70; --ok:#5dff9a;
-  --hud:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
-  --mono:'Share Tech Mono',ui-monospace,Menlo,monospace;
+  --hud:'Roboto Condensed','Arial Narrow',system-ui,sans-serif;
+  --mono:'Roboto Condensed','Arial Narrow',system-ui,sans-serif;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
-  font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+  font:13px/1.3 var(--hud);font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%}
 body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
-#top{flex:none;max-height:58dvh;overflow-y:auto;background:var(--panel);border-bottom:1px solid var(--glow);
-  box-shadow:0 2px 14px rgba(53,196,255,.18);
-  padding:calc(8px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px));
-  display:flex;flex-direction:column;gap:8px;z-index:5}
-.bar{display:flex;gap:6px;align-items:center}
-.seg{display:flex;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--field)}
-.seg button{border:0;background:none;padding:6px 10px;color:var(--mute);min-height:32px;font-family:var(--hud);font-weight:600;
-  letter-spacing:.06em;text-transform:uppercase}
-.seg button+button{border-left:1px solid var(--line)}
-.seg button[aria-pressed="true"]{background:var(--accent);color:#00131f}
-.bar .seg{flex:1}
-.bar .seg button{flex:1;padding-inline:4px}
-.tog{border:1px solid var(--line);background:var(--field);border-radius:3px;min-height:34px;padding:0 11px;color:var(--accent);
-  font-family:var(--hud);font-weight:600;letter-spacing:.06em;text-transform:uppercase;min-width:58px}
-.tog[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 8px rgba(53,196,255,.4)}
-
-#rows{display:flex;flex-direction:column;gap:7px}
-.loc{display:flex;flex-direction:column;gap:4px}
-.l1,.l2{display:flex;gap:6px;align-items:center}
-.dot{flex:none;width:26px;height:26px;border-radius:50%;background:var(--k);color:#050a12;font-weight:700;
-  display:grid;place-items:center;font-size:13px;font-family:var(--hud);box-shadow:0 0 8px var(--k)}
-input[type=text],input[type=number],input[type=password],input.num{background:var(--field);border:1px solid var(--line);border-radius:3px;
-  padding:0 9px;height:34px;min-width:0;font-size:16px;font-family:var(--mono)}
+#top{flex:none;background:var(--panel);border-bottom:1px solid var(--glow);box-shadow:0 2px 12px rgba(53,196,255,.16);
+  padding:calc(4px + env(safe-area-inset-top,0px)) max(8px,env(safe-area-inset-right,0px)) 0 max(8px,env(safe-area-inset-left,0px));
+  z-index:5}
+#rows{display:flex;flex-direction:column;gap:4px}
+#top.folded #rows{display:none}
+.loc{display:flex;flex-direction:column;gap:2px}
+.l1{display:flex;gap:4px;align-items:center}
+.dot{flex:none;width:22px;height:22px;border-radius:50%;background:var(--k);color:#050a12;font-weight:700;
+  display:grid;place-items:center;font-size:12px;box-shadow:0 0 7px var(--k)}
+input[type=text],input[type=number],input[type=password]{background:var(--field);border:1px solid var(--line);border-radius:3px;
+  padding:0 6px;height:30px;min-width:0;font-size:16px;font-family:var(--hud)}
 .url{flex:1}
 .url.ok{border-color:#1f6b57}
 .url.err{border-color:var(--bad)}
 .url.busy{border-color:var(--warn)}
-.clr{flex:none;width:32px;height:34px;border:0;background:none;color:var(--mute);font-size:20px;line-height:1}
-.l2{padding-left:32px}
-.l2 .seg button{padding:4px 0;width:38px;font-size:16px;line-height:1}
-.nf{position:relative;flex:1;max-width:96px}
-.nf input{width:100%;padding-right:30px}
-.nf b{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-weight:400;font-size:12px;color:var(--mute);pointer-events:none;font-family:var(--hud);letter-spacing:.05em}
-.msg{padding-left:32px;font-size:12px;color:var(--bad)}
+.mode{flex:none;width:30px;height:30px;border:1px solid var(--accent);background:var(--field);border-radius:3px;font-size:16px;line-height:1;padding:0}
+.nf{position:relative;flex:none}
+.nf.m{width:50px}.nf.k{width:54px}
+.nf input{width:100%;padding:0 17px 0 6px;text-align:right}
+.nf b{position:absolute;right:4px;top:50%;transform:translateY(-50%);font-weight:400;font-size:10px;color:var(--mute);pointer-events:none}
+.clr{flex:none;width:20px;height:30px;border:0;background:none;color:var(--mute);font-size:18px;line-height:1;padding:0}
+.msg{padding-left:26px;font-size:11px;color:var(--bad)}
 .msg.busy{color:var(--warn)}
+#fold{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:16px;border:0;background:none;color:var(--accent);padding:0;font-size:11px}
+#fold .sum{display:none;color:var(--fg);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+#top.folded #fold{height:26px;justify-content:space-between;padding:0 4px;font-size:12px}
+#top.folded #fold .sum{display:block;flex:1;text-align:left}
 
-#settings{border:1px solid var(--line);border-radius:3px;padding:8px;background:var(--field);display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
-#settings[hidden]{display:none}
-#settings label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
-#settings input{width:100%}
-#settings .wide{grid-column:1/-1}
-#settings small{color:var(--mute);font-size:11px;line-height:1.4}
-#settings button{border:1px solid var(--line);background:var(--panel);border-radius:3px;height:34px;font-family:var(--hud);letter-spacing:.06em;text-transform:uppercase}
+.gear{position:absolute;top:8px;right:max(8px,env(safe-area-inset-right,0px));z-index:1100;width:32px;height:32px;border:1px solid var(--glow);
+  background:rgba(5,12,22,.88);color:var(--accent);border-radius:3px;font-size:17px;line-height:1;padding:0}
+.gear[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 8px rgba(53,196,255,.45)}
+.sheet{position:absolute;z-index:1090;top:46px;left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));
+  max-height:calc(100% - 54px);overflow-y:auto;background:rgba(8,17,31,.97);border:1px solid var(--glow);border-radius:3px;padding:8px;
+  box-shadow:0 6px 24px rgba(0,0,0,.6);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px}
+.sheet[hidden]{display:none}
+.sheet label{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--mute)}
+.sheet input{width:100%}
+.sheet .wide{grid-column:1/-1}
+.sheet small{color:var(--mute);font-size:11px;line-height:1.35}
+.sheet h4{margin:0;font-size:11px;font-weight:500;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.sheet button.act{border:1px solid var(--line);background:var(--panel);border-radius:3px;height:30px;text-transform:uppercase;letter-spacing:.05em}
+.seg{display:flex;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--field)}
+.seg button{flex:1;border:0;background:none;padding:0 4px;color:var(--mute);height:30px;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#00131f}
 
 #mapwrap{flex:1;min-height:0;position:relative;overflow:hidden}
 #map{position:absolute;inset:0;background:#07121f}
@@ -90,37 +91,42 @@ input[type=text],input[type=number],input[type=password],input.num{background:va
 body.running .sweep{display:block;animation:sweep 2.6s linear infinite}
 @keyframes sweep{from{transform:translateY(0)}to{transform:translateY(60vh)}}
 
-#hud{position:absolute;left:calc(8px + max(0px,env(safe-area-inset-left,0px)));top:12px;z-index:1000;width:min(64%,262px);
-  background:rgba(5,12,22,.84);border:1px solid var(--glow);padding:7px 10px 8px;pointer-events:none;
-  font-family:var(--hud);text-transform:uppercase;letter-spacing:.07em;box-shadow:0 0 14px rgba(53,196,255,.22) inset}
-#hud .t{font-size:16px;font-weight:700;color:#fff;line-height:1.1}
-#hud .r{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-weight:600;color:var(--mute);line-height:1.35}
+#hud{position:absolute;left:max(8px,env(safe-area-inset-left,0px));top:8px;z-index:1000;width:min(60%,214px);
+  background:rgba(5,12,22,.84);border:1px solid var(--glow);padding:4px 8px 5px;pointer-events:none;
+  text-transform:uppercase;letter-spacing:.04em;box-shadow:0 0 12px rgba(53,196,255,.2) inset}
+#hud .t{font-size:13px;font-weight:700;color:#fff;line-height:1.15}
+#hud .r{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:500;color:var(--mute);line-height:1.25}
 #h-status.idle{color:var(--mute)}#h-status.trk{color:var(--good)}#h-status.lock{color:var(--warn)}#h-status.bad{color:var(--danger)}
 body.running #h-status{animation:blink 1.1s steps(2,start) infinite}
 @keyframes blink{50%{opacity:.45}}
-#h-acc{font-family:var(--mono);color:var(--fg);letter-spacing:.02em}
-.abar{height:6px;background:#091a2e;border:1px solid var(--line);margin:4px 0 3px}
-.abar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#1b6fa8,var(--accent));box-shadow:0 0 9px var(--accent)}
-#chip{text-transform:none;font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em}
-#h-sub{font-size:11px;color:var(--mute);letter-spacing:.12em}
+#h-acc{color:var(--fg);font-weight:700}
+.abar{height:4px;background:#091a2e;border:1px solid var(--line);margin:3px 0 2px}
+.abar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#1b6fa8,var(--accent));box-shadow:0 0 8px var(--accent)}
+#chip{text-transform:none;font-size:11px;color:var(--accent)}
+#h-sub{font-size:10px;color:var(--mute);letter-spacing:.06em;line-height:1.2}
 @media (prefers-reduced-motion:reduce){body.running .sweep,body.running #h-status{animation:none}}
 
 #card{position:absolute;left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));
-  bottom:calc(30px + env(safe-area-inset-bottom,0px));max-height:40%;overflow-y:auto;z-index:1000;
-  background:rgba(5,12,22,.9);border:1px solid var(--glow);border-radius:3px;padding:9px 11px;
-  display:flex;flex-direction:column;gap:5px;font-size:14px;font-variant-numeric:tabular-nums;
-  box-shadow:0 0 16px rgba(53,196,255,.2);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  bottom:calc(22px + env(safe-area-inset-bottom,0px));max-height:44%;overflow-y:auto;z-index:1000;
+  background:rgba(5,12,22,.9);border:1px solid var(--glow);border-radius:3px;padding:4px 8px 5px;
+  display:flex;flex-direction:column;gap:3px;font-size:12px;
+  box-shadow:0 0 14px rgba(53,196,255,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#card .chead{display:flex;align-items:center;gap:6px;min-height:20px}
+#card .chead .sum{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500}
+#card .cfold{flex:none;width:26px;height:20px;border:0;background:none;color:var(--accent);font-size:12px;padding:0}
+#card .cbody{display:flex;flex-direction:column;gap:3px}
+#card.cc .cbody{display:none}
 #card .hint{color:var(--mute)}
-#card .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-#card .k{font-weight:700;font-family:var(--hud)}
-#card .z{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-top:5px;border-top:1px solid var(--line)}
-#card .z .t{flex:1;min-width:150px}
-#card .z strong{color:var(--warn);font-family:var(--hud);letter-spacing:.07em;text-transform:uppercase}
-#card .mini{border:1px solid var(--line);background:var(--panel);border-radius:3px;padding:4px 10px;font-size:13px;
-  text-decoration:none;color:var(--fg);min-height:30px;display:inline-flex;align-items:center;font-family:var(--hud);
-  letter-spacing:.06em;text-transform:uppercase;font-weight:600}
-#card .go{border-color:var(--accent);color:var(--accent);box-shadow:0 0 8px rgba(53,196,255,.35)}
-#card .dim{color:var(--mute);font-size:13px}
+#card .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#card .k{font-weight:700}
+#card .z{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding-top:3px;border-top:1px solid var(--line)}
+#card .z .t{flex:1;min-width:140px;line-height:1.25}
+#card .z strong{color:var(--warn);text-transform:uppercase;letter-spacing:.04em}
+#card .mini{border:1px solid var(--line);background:var(--panel);border-radius:3px;padding:2px 8px;font-size:12px;
+  text-decoration:none;color:var(--fg);min-height:24px;display:inline-flex;align-items:center;
+  letter-spacing:.04em;text-transform:uppercase;font-weight:500}
+#card .go{border-color:var(--accent);color:var(--accent);box-shadow:0 0 7px rgba(53,196,255,.3)}
+#card .dim{color:var(--mute);font-size:12px}
 #card .warn{color:var(--danger)}
 
 .ret span{display:block;width:46px;height:46px;border:2px solid var(--warn);border-radius:50%;position:relative;
@@ -132,53 +138,56 @@ body.running #h-status{animation:blink 1.1s steps(2,start) infinite}
 @media (prefers-reduced-motion:reduce){.ret span{animation:none}}
 
 /* Google map overlays */
-.zoom{position:absolute;right:max(10px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);z-index:1000;display:flex;
+.zoom{position:absolute;right:max(8px,env(safe-area-inset-right,0px));top:46px;z-index:1000;display:flex;
   flex-direction:column;border:1px solid var(--glow);background:rgba(5,12,22,.88)}
-.zoom button{width:38px;height:38px;border:0;background:none;color:var(--accent);font-size:22px;line-height:1}
+.zoom button{width:32px;height:32px;border:0;background:none;color:var(--accent);font-size:22px;line-height:1}
 .zoom button+button{border-top:1px solid var(--line)}
 .gov{position:absolute;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap}
-.gov.dl span{display:block;background:rgba(5,12,22,.9);color:var(--fg);font:11px var(--mono);padding:1px 6px;border:1px solid var(--glow)}
+.gov.dl span{display:block;background:rgba(5,12,22,.9);color:var(--fg);font:11px var(--hud);padding:1px 6px;border:1px solid var(--glow)}
 .gov.tl{transform:translate(-50%,calc(-100% - 30px))}
 .tlbox{background:rgba(70,4,14,.94);border:1px solid var(--warn);color:#fff;box-shadow:0 0 12px rgba(255,59,74,.5);
-  font:600 13px/1.25 var(--hud);letter-spacing:.07em;text-transform:uppercase;padding:3px 8px}
+  font:700 12px/1.2 var(--hud);letter-spacing:.05em;text-transform:uppercase;padding:2px 7px}
 .gov.tl.low{transform:translate(-50%,16px)}
 .tlbox.sm{background:rgba(5,12,22,.92);border-color:var(--warn);font-size:12px;padding:2px 7px}
-.tlbox small{display:block;font:11px var(--mono);letter-spacing:.02em;color:var(--warn);text-transform:none}
+.tlbox small{display:block;font:400 11px var(--hud);letter-spacing:.02em;color:var(--warn);text-transform:none}
 #card .mini[disabled]{opacity:.45}
 </style>
 </head>
 <body>
 
 <div id="top">
-  <div class="bar">
-    <div class="seg" id="maptype" role="group" aria-label="Map type">
+  <div id="rows"></div>
+  <button id="fold" type="button" aria-expanded="true" aria-label="Show or hide the places form"><span class="sum" id="foldtxt"></span><span id="foldarr">▴</span></button>
+</div>
+
+<div id="mapwrap">
+  <div id="map"></div>
+  <div class="sweep"></div>
+  <button id="gear" class="gear" type="button" aria-expanded="false" aria-label="Settings">⚙</button>
+  <div id="settings" class="sheet" hidden>
+    <h4 class="wide">Map</h4>
+    <div class="seg wide" id="maptype" role="group" aria-label="Map type">
       <button data-t="road" type="button">Map</button>
       <button data-t="terrain" type="button">Terrain</button>
       <button data-t="sat" type="button">Satellite</button>
     </div>
-    <button id="bw" class="tog" type="button" title="Map look: night, black and white, color">Night</button>
-    <button id="gear" class="tog" type="button" aria-expanded="false" aria-label="Settings">⚙</button>
-  </div>
-
-  <div id="settings" hidden>
+    <div class="seg wide" id="looktype" role="group" aria-label="Map look">
+      <button data-l="night" type="button">Night</button>
+      <button data-l="bw" type="button">B/W</button>
+      <button data-l="color" type="button">Color</button>
+    </div>
     <label class="wide">Google Maps API key<input id="gkey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your key here"></label>
-    <small class="wide">The key is saved in this browser only and never leaves it except to talk to Google. Turn on <b>Maps JavaScript API</b> and <b>Routes API</b> for it (and <b>Places API (New)</b> to look up place names and short links). Tracking uses up to 2,400 route calculations per run.</small>
+    <label class="wide">Route calculations per run. Under 100 gives a quick estimate calibrated with a few real routes. Around 150 to 1,500 searches the map block by block. Each costs Google credit after the free monthly allowance.<input id="grun" type="number" inputmode="numeric" step="10" min="4" max="5000"></label>
+    <label class="wide" style="flex-direction:row;align-items:center;gap:8px"><input id="osmx" type="checkbox" style="width:auto"><span>Add 10 free OpenStreetMap test points to the quick estimate (sends the places' coordinates to a public OpenStreetMap routing server, no Google cost)</span></label>
     <label>Walk speed (km/h)<input id="sp-walk" type="number" inputmode="decimal" step="0.1" min="1"></label>
     <label>Motorbike speed (km/h)<input id="sp-bike" type="number" inputmode="decimal" step="1" min="1"></label>
     <label>Car speed (km/h)<input id="sp-car" type="number" inputmode="decimal" step="1" min="1"></label>
     <label>Walk: shortest straight line (% of route)<input id="dt-walk" type="number" inputmode="numeric" step="5" min="5" max="100"></label>
     <label>Motorbike: shortest straight line (%)<input id="dt-bike" type="number" inputmode="numeric" step="5" min="5" max="100"></label>
     <label>Car: shortest straight line (%)<input id="dt-car" type="number" inputmode="numeric" step="5" min="5" max="100"></label>
-    <small class="wide">Speeds and percentages only shape the rough preview before tracking. Tracking itself asks Google for the real routes. Typing the route km from Maps is more accurate than minutes.</small>
-    <button id="reset" class="wide" type="button">Reset everything</button>
+    <small class="wide">Speeds and percentages only shape the rough preview before tracking. Tracking asks Google for the real routes. Typing the route km from Maps is more accurate than minutes. The key is saved in this browser only.</small>
+    <button id="reset" class="wide act" type="button">Reset everything</button>
   </div>
-
-  <div id="rows"></div>
-</div>
-
-<div id="mapwrap">
-  <div id="map"></div>
-  <div class="sweep"></div>
   <div class="zoom"><button id="zin" type="button" aria-label="Zoom in">+</button><button id="zout" type="button" aria-label="Zoom out">−</button></div>
   <div id="hud">
     <div class="t">Operation: Pinpoint</div>
@@ -205,7 +214,7 @@ var MT={road:'roadmap',terrain:'terrain',sat:'hybrid'};
 var HARD_KEY='AIzaSyDjmMpDGzHLptUbQVBU3kus3jnraBIPrKw';
 function defaults(){
   return {locs:[0,1,2].map(function(){return {c:'',mode:'walk',min:'',km:''}}),
-          map:'road',look:'night',gkey:HARD_KEY,speeds:{walk:4.3,bike:30,car:35},detour:{walk:60,bike:20,car:15}};
+          map:'road',look:'night',gkey:HARD_KEY,grun:9,osm:true,speeds:{walk:4.3,bike:30,car:35},detour:{walk:60,bike:20,car:15}};
 }
 function load(){
   var s=null;
@@ -218,6 +227,8 @@ function load(){
     if(MT[p.map]) d.map=p.map;
     if(p.look) d.look=p.look;
     if(typeof p.gkey==='string'&&p.gkey) d.gkey=p.gkey;
+    if(p.grun>=4) d.grun=p.grun;
+    if(typeof p.osm==='boolean') d.osm=p.osm;
     if(p.speeds) Object.assign(d.speeds,p.speeds);
     if(p.detour&&typeof p.detour==='object') Object.assign(d.detour,p.detour);
   }catch(e){}}
@@ -434,14 +445,12 @@ function buildRows(){
     d.innerHTML=
       '<div class="l1"><span class="dot" style="--k:'+COLORS[i]+'">'+LET[i]+'</span>'+
       '<input type="text" class="url" id="url'+i+'" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" '+
-        'placeholder="Google Maps link or lat, lng'+(i===2?' (optional)':'')+'" aria-label="Location '+LET[i]+'">'+
+        'placeholder="Maps link or lat, lng'+(i===2?' (optional)':'')+'" aria-label="Location '+LET[i]+'">'+
+      '<button type="button" class="mode" aria-label="Travel mode"></button>'+
+      '<span class="nf m"><input class="min" id="min'+i+'" type="text" inputmode="decimal" aria-label="Minutes '+LET[i]+'"><b>min</b></span>'+
+      '<span class="nf k"><input class="km" id="km'+i+'" type="text" inputmode="decimal" aria-label="Route km '+LET[i]+'"><b>km</b></span>'+
       '<button type="button" class="clr" aria-label="Clear location '+LET[i]+'">×</button></div>'+
-      '<div class="msg" hidden></div>'+
-      '<div class="l2"><div class="seg" role="group" aria-label="Travel mode '+LET[i]+'">'+
-        MODES.map(function(m){return '<button type="button" data-m="'+m[0]+'" title="'+m[2]+'" aria-label="'+m[2]+'">'+m[1]+'</button>';}).join('')+
-      '</div>'+
-      '<span class="nf"><input class="num min" id="min'+i+'" type="text" inputmode="decimal" placeholder="time" aria-label="Minutes '+LET[i]+'"><b>min</b></span>'+
-      '<span class="nf"><input class="num km" id="km'+i+'" type="text" inputmode="decimal" placeholder="route" aria-label="Route km '+LET[i]+'"><b>km</b></span></div>';
+      '<div class="msg" hidden></div>';
     rowsEl.appendChild(d);
     d.querySelector('.url').value=l.c;
     if(l.c) d.querySelector('.url').classList.add('ok');
@@ -451,8 +460,8 @@ function buildRows(){
   });
 }
 function paintModes(i){
-  var row=rowsEl.children[i];
-  row.querySelectorAll('.seg button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.m===state.locs[i].mode));});
+  var b=rowsEl.children[i].querySelector('.mode'),m=MODES.filter(function(x){return x[0]===state.locs[i].mode;})[0]||MODES[0];
+  b.textContent=m[1];b.title=m[2]+'. Tap to change';b.setAttribute('aria-label','Travel mode: '+m[2]+'. Tap to change');
 }
 function setStatus(i,kind,text){
   var row=rowsEl.children[i],u=row.querySelector('.url'),m=row.querySelector('.msg');
@@ -502,35 +511,59 @@ rowsEl.addEventListener('click',function(e){
   var i=+row.dataset.i,b=e.target.closest('button');if(!b) return;
   if(b.classList.contains('clr')){
     seq[i]++;document.getElementById('url'+i).value='';state.locs[i]={c:'',mode:state.locs[i].mode,min:'',km:''};
-    row.querySelector('.min').value='';row.querySelector('.km').value='';setStatus(i,'','');save();render(true);
-  }else if(b.dataset.m){
-    state.locs[i].mode=b.dataset.m;paintModes(i);save();render(true);
+    row.querySelector('.min').value='';row.querySelector('.km').value='';row.querySelector('.url').classList.remove('ok');setStatus(i,'','');save();render(true);
+  }else if(b.classList.contains('mode')){
+    var order=['walk','bike','car'];
+    state.locs[i].mode=order[(order.indexOf(state.locs[i].mode)+1)%3];paintModes(i);save();render(true);
   }
 });
 
 /* ---------- UI: header + settings ---------- */
-var typeBtns=document.querySelectorAll('#maptype button'),lookBtn=document.getElementById('bw'),gear=document.getElementById('gear'),settings=document.getElementById('settings');
+var typeBtns=document.querySelectorAll('#maptype button'),lookBtns=document.querySelectorAll('#looktype button'),gear=document.getElementById('gear'),settings=document.getElementById('settings');
 function paintHeader(){
   typeBtns.forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.t===state.map));});
+  lookBtns.forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.l===state.look));});
   var c=document.body.classList;
   c.remove('look-night','look-bw','look-color');c.add('look-'+state.look);
-  lookBtn.textContent={night:'Night',bw:'B/W',color:'Color'}[state.look]||'Night';
 }
 document.getElementById('maptype').addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b) return;
   state.map=b.dataset.t;if(map) map.setMapTypeId(MT[state.map]);paintHeader();save();
 });
-lookBtn.addEventListener('click',function(){
-  state.look={night:'bw',bw:'color',color:'night'}[state.look]||'night';applyLook();paintHeader();save();
+document.getElementById('looktype').addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b) return;
+  state.look=b.dataset.l;applyLook();paintHeader();save();
 });
 gear.addEventListener('click',function(){
   var open=settings.hidden;settings.hidden=!open;gear.setAttribute('aria-expanded',String(open));
 });
+/* The places form folds into one line after tracking, with an arrow to open it again. */
+var topEl=document.getElementById('top'),foldBtn=document.getElementById('fold'),formOpen=true;
+function foldSummary(){
+  var parts=[];
+  state.locs.forEach(function(l,i){
+    if(!l.c) return;
+    var md=MODES.filter(function(m){return m[0]===l.mode;})[0],v=parseFloat(l.km)>0?l.km+' km':(parseFloat(l.min)>0?l.min+' min':'—');
+    parts.push(LET[i]+' '+md[1]+' '+v);
+  });
+  return parts.length?parts.join(' · '):'Places';
+}
+function setForm(open){
+  formOpen=open;
+  topEl.classList.toggle('folded',!open);
+  foldBtn.setAttribute('aria-expanded',String(open));
+  document.getElementById('foldarr').textContent=open?'▴':'▾';
+  document.getElementById('foldtxt').textContent=open?'':foldSummary();
+  setTimeout(function(){if(map){google.maps.event.trigger(map,'resize');render(true);}},80);
+}
+foldBtn.addEventListener('click',function(){setForm(!formOpen);});
 var spIds={walk:'sp-walk',bike:'sp-bike',car:'sp-car'};
 function paintSettings(){
   Object.keys(spIds).forEach(function(k){document.getElementById(spIds[k]).value=state.speeds[k];});
   Object.keys(spIds).forEach(function(k){document.getElementById('dt-'+k).value=state.detour[k];});
   document.getElementById('gkey').value=state.gkey||'';
+  document.getElementById('grun').value=state.grun;
+  document.getElementById('osmx').checked=!!state.osm;
 }
 Object.keys(spIds).forEach(function(k){
   document.getElementById(spIds[k]).addEventListener('input',function(e){
@@ -539,6 +572,10 @@ Object.keys(spIds).forEach(function(k){
   document.getElementById('dt-'+k).addEventListener('input',function(e){
     var v=parseFloat(e.target.value);if(v>=5&&v<=100){state.detour[k]=v;save();render(true);}
   });
+});
+document.getElementById('osmx').addEventListener('change',function(e){state.osm=e.target.checked;save();});
+document.getElementById('grun').addEventListener('input',function(e){
+  var v=parseInt(e.target.value,10);if(v>=4&&v<=5000){state.grun=v;save();}
 });
 document.getElementById('gkey').addEventListener('change',function(e){
   var v=e.target.value.trim();
@@ -616,7 +653,7 @@ function add(o){ov.push(o);return o;}
 
 document.getElementById('card').addEventListener('click',function(e){
   var act=e.target.closest('[data-act]');
-  if(act){if(act.dataset.act==='refine') startRefine(); else stopRefine(); return;}
+  if(act){if(act.dataset.act==='refine') startRefine(); else if(act.dataset.act==='cfold'){cardOpen=!cardOpen;render(false);} else stopRefine(); return;}
   var b=e.target.closest('[data-copy]');if(!b) return;
   var text=b.dataset.copy;
   (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).catch(function(){
@@ -626,7 +663,8 @@ document.getElementById('card').addEventListener('click',function(e){
 });
 
 /* ---------- HUD + accuracy ---------- */
-var RF={testing:null,running:false,gen:0,sig:null,cells:null,size:0,zones:[],next:null,msg:'',deadline:0,pass:0,curSize:0,trunc:false,timer:null,
+var cardOpen=true;
+var RF={cal:null,narrow:0,testing:null,running:false,gen:0,sig:null,cells:null,size:0,zones:[],next:null,msg:'',deadline:0,pass:0,curSize:0,trunc:false,timer:null,
         accT:0,accS:0,accRaf:0,area0:1,gUsed:0,gmsg:''};
 var chip=document.getElementById('chip');
 var elStatus=document.getElementById('h-status'),elAcc=document.getElementById('h-acc'),elBar=document.getElementById('h-bar'),elSub=document.getElementById('h-sub');
@@ -646,12 +684,12 @@ function idleHud(){hud('Standby','idle','Real-time intelligence');RF.accT=RF.acc
 function hideChip(){document.body.classList.remove('running');chip.hidden=true;if(RF.timer){clearInterval(RF.timer);RF.timer=null;}}
 
 /* ---------- tracking with Google routing ---------- */
-var SECONDS=30,MIN_CELL=0.025,GRUN=2400,GCAP=140,ENG_KMH={walk:5,bike:35,car:40};
+var SECONDS=30,MIN_CELL=0.025,GCAP=140,ENG_KMH={walk:5,bike:35,car:40};
 /* Fastest believable speed per mode (bounds the search area when only minutes are given) and how far Maps times can drift from Google's free-flow times. */
 var MAXKMH={walk:6.5,bike:60,car:70},TIMETOL={walk:0.15,bike:0.25,car:0.3};
 var GMODE={walk:'WALK',bike:'TWO_WHEELER',car:'DRIVE'},GURL='https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix';
 function sigNow(){return JSON.stringify(state.locs.map(function(l){return [l.c,l.mode,l.min,l.km];}));}
-function cancelRefine(){RF.gen++;RF.running=false;RF.cells=null;RF.sig=null;RF.zones=[];RF.next=null;RF.msg='';RF.gmsg='';RF.pass=0;hideChip();idleHud();}
+function cancelRefine(){RF.gen++;RF.running=false;RF.cal=null;RF.cells=null;RF.sig=null;RF.zones=[];RF.next=null;RF.msg='';RF.gmsg='';RF.pass=0;hideChip();idleHud();}
 function stopRefine(){RF.gen++;RF.running=false;RF.msg='Tracking aborted.';hideChip();hud('Tracking aborted','bad','Tap continue to resume');render(false);}
 function tick(){
   var left=Math.max(0,Math.ceil((RF.deadline-Date.now())/1000));
@@ -761,6 +799,108 @@ function initialCells(rings){
   }
   return {cells:cells,size:size};
 }
+/* Small budget: use the free rough zone, spend a few real routes at test points inside it, and use how winding the roads are there to tighten each place's ring. */
+var LITE_LO=0.9,LITE_HI=1.15,OSM_EXTRA=10,OSMURL='https://valhalla1.openstreetmap.de/sources_to_targets',OSMMODE={walk:'pedestrian',bike:'motorcycle',car:'auto'};
+async function osmMatrix(ring,pts){
+  var body={sources:pts.map(function(c){return {lat:c.lat,lon:c.lng};}),targets:[{lat:ring.lat,lon:ring.lng}],costing:OSMMODE[ring.mode]};
+  var r=await withTimeout(OSMURL+'?json='+encodeURIComponent(JSON.stringify(body)),15000);
+  if(!r.ok) return null;
+  var j=await r.json();
+  return (j.sources_to_targets||[]).map(function(row){var x=row&&row[0];return x&&x.distance!=null?{d:x.distance,t:x.time}:null;});
+}
+async function startLite(sig){
+  var gen=++RF.gen,rr=[];
+  state.locs.forEach(function(l,i){
+    var p=parseSaved(l.c);if(!p) return;
+    var r=ringFor(l,p);if(!r) return;
+    var kg=parseFloat(l.km),mn=parseFloat(l.min);
+    r.i=i;r.mode=l.mode;r.kmGiven=kg>0?kg:0;r.min=mn>0?mn:0;rr.push(r);
+  });
+  var rough=computeZones(rr);
+  RF.sig=sig;RF.cells=null;RF.cal=null;RF.zones=[];RF.next=null;RF.gmsg='';RF.gUsed=0;
+  if(!rough||!rough.zones.length){RF.msg='No overlap to test. Check the times and modes.';hud('No match','bad','Check times and travel modes');render(false);return;}
+  var k=rr.length,m=Math.max(1,Math.floor(state.grun/k)),probes=[];
+  rough.zones.slice(0,m).forEach(function(z){probes.push({lat:z.lat,lng:z.lng});});
+  var runs=rough.runs||[];
+  for(var q=0;probes.length<m&&runs.length&&q<m*4;q++){
+    var rb=runs[Math.floor((q+0.5)*runs.length/(m*4))%runs.length];
+    probes.push({lat:(rb.north+rb.south)/2,lng:(rb.east+rb.west)/2});
+  }
+  probes=probes.slice(0,m);
+  /* Free extra test points, spread over the rough zone, for the OpenStreetMap router. */
+  var extra=[];
+  if(state.osm&&runs.length){
+    for(var e=0;e<OSM_EXTRA;e++){
+      var re=runs[Math.floor((e+0.5)*runs.length/OSM_EXTRA)%runs.length];
+      extra.push({lat:(re.north+re.south)/2,lng:(re.east+re.west)/2});
+    }
+  }
+  RF.running=true;RF.msg='';
+  hud('Active tracking','trk','Calibrating with '+(probes.length*k)+' real routes…');document.body.classList.add('running');
+  setAcc(1,true);render(false);
+  try{
+    var vals=[];
+    for(var a=0;a<rr.length;a++){vals.push(await gMatrix(rr[a],probes,gen));if(gen!==RF.gen) return;}
+    var osmVals=null,osmN=0;
+    if(extra.length){
+      try{osmVals=await Promise.all(rr.map(function(ring){return osmMatrix(ring,probes.concat(extra));}));}catch(e){osmVals=null;}
+      if(gen!==RF.gen) return;
+    }
+    var cal={};
+    rr.forEach(function(ring,a){
+      var ratios=[],kmpm=[];
+      probes.forEach(function(pr,j){
+        var v=vals[a][j],sKm=flatKm(ring,pr.lat,pr.lng);
+        if(v&&sKm>0.08){ratios.push(Math.max(1,v.d/sKm));if(v.t>0) kmpm.push(v.d/(v.t/60));}
+      });
+      /* OpenStreetMap shows where roads wind more or less. Its scale is matched to Google at the shared test points. */
+      var ov=osmVals&&osmVals[a];
+      if(ov&&ratios.length){
+        var sc=[];
+        probes.forEach(function(pr,j){var g=vals[a][j],o=ov[j];if(g&&o&&o.d>0&&flatKm(ring,pr.lat,pr.lng)>0.08) sc.push(g.d/o.d);});
+        if(sc.length){
+          sc.sort(function(x,y){return x-y;});
+          var scale=Math.min(2.5,Math.max(0.4,sc[Math.floor(sc.length/2)]));
+          extra.forEach(function(pr,q){
+            var o=ov[probes.length+q],sKm=flatKm(ring,pr.lat,pr.lng);
+            if(o&&o.d>0&&sKm>0.08){ratios.push(Math.max(1,o.d*scale/sKm));osmN++;}
+          });
+        }
+      }
+      if(!ratios.length) return;
+      var lo=Math.max(1,Math.min.apply(null,ratios)*LITE_LO),hi=Math.max.apply(null,ratios)*LITE_HI,sMin,sMax;
+      if(ring.kmGiven){sMin=ring.kmGiven*0.97/hi;sMax=ring.kmGiven*1.03/lo;}
+      else if(kmpm.length){sMin=ring.min*Math.min.apply(null,kmpm)*0.85/hi;sMax=ring.min*Math.max.apply(null,kmpm)*1.15/lo;}
+      else return;
+      cal[ring.i]={rMin:Math.max(0.02,sMin),rMax:sMax};
+    });
+    var cr=rr.map(function(r){var c=cal[r.i];return c?{lat:r.lat,lng:r.lng,rMin:c.rMin,rMax:Math.min(c.rMax,r.rMax)}:r;});
+    var z2=computeZones(cr),a1=0,ref=0;
+    z2.zones.forEach(function(z){a1+=z.area;});
+    rr.forEach(function(r){ref+=r.route*r.route*Math.PI;});ref/=rr.length;
+    RF.running=false;hideChip();
+    if(!z2.zones.length){
+      RF.cal=null;RF.msg='These numbers do not fit real routes. Check the travel mode, time and km.';
+      hud('No match','bad','Check times and travel modes');
+    }else{
+      RF.cal=cal;
+      RF.narrow=Math.min(45,100*(1-Math.sqrt(Math.min(1,a1/ref))));
+      var top=z2.zones[0].area/a1;
+      setAcc(Math.max(1,RF.narrow*top));
+      RF.msg='Quick estimate from '+RF.gUsed+' Google routes'+(osmN?' plus '+osmN+' free OpenStreetMap test routes':'')+'. In my tests the real spot was inside the zone about 8 times in 10. Raise the route limit in settings for a sharper result.';
+      if(z2.zones.length>1) hud('Candidates found','lock',z2.zones.length+' possible areas. Add a place to narrow it');
+      else hud('Estimate ready','lock','Calibrated with '+RF.gUsed+' real routes');
+      setForm(false);
+    }
+    render(true);
+  }catch(err){
+    if(gen!==RF.gen) return;
+    RF.running=false;hideChip();hud('Signal lost','bad','Google routing not reachable');
+    var em=err&&err.name==='AbortError'?'timed out':(err&&err.message)||'network error';
+    RF.msg='Could not reach Google routing ('+em+').'+(/403|PERMISSION|not been used|disabled/i.test(em)?' Turn on the Routes API for your key.':'');
+    render(false);
+  }
+}
 async function startRefine(){
   if(RF.running||!state.gkey||!map) return;
   var sig=sigNow(),rings=[];
@@ -772,6 +912,7 @@ async function startRefine(){
     rings.push({i:i,lat:p.lat,lng:p.lng,mode:l.mode,kmGiven:kg>0?kg:0,min:mn>0?mn:0,rMax:kg>0?kg*1.2:mn*MAXKMH[l.mode]/60*1.1});
   });
   if(rings.length<2) return;
+  if(state.grun<100) return startLite(sig);
   var gen=++RF.gen,continuing=!!(RF.cells&&RF.sig===sig&&RF.next&&RF.next.cells.length);
   var work;
   if(continuing){work=RF.next;}
@@ -786,7 +927,7 @@ async function startRefine(){
   render(false);
   try{
     while(gen===RF.gen&&work.cells.length){
-      if(RF.gUsed+work.cells.length*rings.length>GRUN){RF.gmsg='Stopped at the '+GRUN+' route calculation safety limit. Tap continue to spend more.';break;}
+      if(RF.gUsed+work.cells.length*rings.length>state.grun){RF.gmsg='Stopped at your limit of '+state.grun+' route calculations. Raise it in settings to go further.';break;}
       RF.pass++;RF.curSize=work.size;tick();
       RF.testing=work.cells;render(false);
       var vals=[];
@@ -812,6 +953,7 @@ async function startRefine(){
     else if(RF.zones.length>1&&RF.zones[0].share<0.85) hud('Candidates found','lock',RF.zones.length+' possible areas. Add a place to narrow it');
     else hud('Target located','lock','Verified with Google routing');
     RF.msg=!RF.cells||!RF.cells.length?'':(RF.next&&RF.next.cells.length?'Paused at '+Math.round(RF.size*1000)+' m cells.':'Finished at '+Math.round(RF.size*1000)+' m cells.');
+    if(RF.cells&&RF.cells.length) setForm(false);
     render(true);
   }catch(err){
     if(gen!==RF.gen) return;
@@ -831,6 +973,7 @@ function render(fit){
   clearOv();
   if(RF.sig&&RF.sig!==sigNow()) cancelRefine();
   var useRef=!!(RF.cells&&RF.sig===sigNow());
+  var useCal=!useRef&&!!(RF.cal&&RF.sig===sigNow());
   var pts=[],rings=[],card=document.getElementById('card'),bounds=null;
   function grow(lat,lng){if(!map) return;if(!bounds) bounds=new google.maps.LatLngBounds();bounds.extend({lat:lat,lng:lng});}
   state.locs.forEach(function(l,i){
@@ -838,6 +981,7 @@ function render(fit){
     p.i=i;pts.push(p);
     var r=ringFor(l,p);
     if(r){
+      if(useCal&&RF.cal[i]){r.rMin=RF.cal[i].rMin;r.rMax=Math.min(RF.cal[i].rMax,r.rMax);}
       r.i=i;r.mode=l.mode;rings.push(r);
       if(map&&!useRef&&!RF.running){
         var outer=circlePts(p.lat,p.lng,r.rMax,90),inner=r.rMin>0.02?circlePts(p.lat,p.lng,r.rMin,90):null;
@@ -854,6 +998,8 @@ function render(fit){
     }
   }
   var zres=useRef?{zones:RF.zones,runs:null}:computeZones(rings);
+  RF.shown=zres;
+  if(useCal&&zres&&zres.zones.length){var tot=0;zres.zones.forEach(function(z){tot+=z.area;});zres.zones.forEach(function(z){z.share=z.area/tot;});}
   if(map){
     if(RF.running&&RF.testing) RF.testing.forEach(function(c){
       add(new google.maps.Marker({map:map,position:{lat:c.lat,lng:c.lng},clickable:false,zIndex:20,
@@ -877,10 +1023,10 @@ function render(fit){
       add(new google.maps.Marker({map:map,position:{lat:z.lat,lng:z.lng},clickable:false,zIndex:400,
         icon:{path:google.maps.SymbolPath.CIRCLE,scale:6,fillColor:'#ffc53d',fillOpacity:1,strokeColor:'#fff',strokeWeight:2},
         label:zres.zones.length>1?{text:String(n+1),color:'#fff',fontSize:'11px',fontWeight:'700',className:'znl'}:null}));
-      if(useRef&&n===0&&Html){
+      if((useRef||useCal)&&n===0&&Html){
         add(new Html({lat:z.lat,lng:z.lng},'<span></span>','ret')).setMap(map);
         add(new Html({lat:z.lat,lng:z.lng},'<div class="tlbox">'+(zres.zones.length>1?'Potential location #1 · '+zoneAcc(z)+'%':'Triangulated location (est.)')+'<small>'+z.lat.toFixed(5)+', '+z.lng.toFixed(5)+'</small></div>','tl')).setMap(map);
-      }else if(useRef&&Html){
+      }else if((useRef||useCal)&&Html){
         add(new Html({lat:z.lat,lng:z.lng},'<div class="tlbox sm">Potential location #'+(n+1)+' · '+zoneAcc(z)+'%</div>','tl low')).setMap(map);
       }
       grow(z.lat,z.lng);
@@ -917,23 +1063,28 @@ function render(fit){
     if(rings.length<2){
       h+='<div class="hint">'+(pts.length<2?'Add a second location and its time.':'Enter minutes or route km for at least two places.')+'</div>';
     }else{
-      h+='<div class="row"><button class="mini go" type="button" data-act="'+(RF.running?'stop':'refine')+'"'+(map?'':' disabled')+'>'+(RF.running?'Abort':(useRef?(RF.next&&RF.next.cells.length?'Continue tracking':'Track again'):'Start tracking · 30 s'))+'</button><span class="dim">'+(RF.msg||(map?(useRef?'':'Rough estimate. Tracking uses Google routing.'):'Waiting for the map to load…'))+'</span></div>';
+      h+='<div class="row"><button class="mini go" type="button" data-act="'+(RF.running?'stop':'refine')+'"'+(map?'':' disabled')+'>'+(RF.running?'Abort':(useRef?(RF.next&&RF.next.cells.length?'Continue tracking':'Track again'):(state.grun<100?'Start tracking · '+state.grun+' routes':'Start tracking · 30 s')))+'</button><span class="dim">'+(RF.msg||(map?(useRef?'':'Rough estimate. Tracking uses Google routing.'):'Waiting for the map to load…'))+'</span></div>';
       if(!zres.zones.length){
         h+=useRef?'<div class="warn">No place on Google routes matches these numbers. Check the travel mode, time and km.</div>':'<div class="warn">No overlap in the rough estimate. Check the times and modes, or start tracking to test real routes anyway.</div>';
       }else{
         zres.zones.slice(0,4).forEach(function(z,n){
-          var c=z.lat.toFixed(5)+', '+z.lng.toFixed(5),nm=useRef?'Potential location #':'Rough zone ',many=zres.zones.length>1;
-          h+='<div class="z"><div class="t"><strong>'+(many?nm+(n+1):(useRef?'Target zone':'Rough area'))+'</strong>'+(useRef?' · accuracy '+zoneAcc(z)+'%':'')+' · '+(z.area<0.1?(z.area*100).toFixed(1)+' ha':z.area.toFixed(2)+' km²')+'<br><span class="dim">'+c+'</span></div>'+
+          var c=z.lat.toFixed(5)+', '+z.lng.toFixed(5),nm=(useRef||useCal)?'Potential location #':'Rough zone ',many=zres.zones.length>1;
+          h+='<div class="z"><div class="t"><strong>'+(many?nm+(n+1):((useRef||useCal)?'Target zone':'Rough area'))+'</strong>'+((useRef||useCal)?' · accuracy '+zoneAcc(z)+'%':'')+' · '+(z.area<0.1?(z.area*100).toFixed(1)+' ha':z.area.toFixed(2)+' km²')+'<br><span class="dim">'+c+'</span></div>'+
             '<button class="mini" type="button" data-copy="'+c+'">Copy</button>'+
             '<a class="mini" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query='+z.lat.toFixed(6)+','+z.lng.toFixed(6)+'">Open in Maps</a></div>';
         });
         if(useRef) h+='<div class="dim">Checked with Google routing, cells '+Math.round(RF.size*1000)+' m. '+RF.gUsed+' route calculations used.'+(RF.trunc?' Showing the best-matching cells only.':'')+(RF.gmsg?' '+RF.gmsg:'')+'</div>';
-        if(useRef&&zres.zones.length>1) h+='<div class="dim">'+(rings.length<3?'Two places can match more than one area. ':'')+'Each accuracy % combines how small the area is with how closely it fits your numbers. A third place, or exact route km for each place, narrows it to one.</div>';
+        if((useRef||useCal)&&zres.zones.length>1) h+='<div class="dim">'+(rings.length<3?'Two places can match more than one area. ':'')+'Each accuracy % combines how small the area is with how closely it fits your numbers. A third place, or exact route km for each place, narrows it to one.</div>';
         else if(!useRef&&rings.length===2&&zres.zones.length>1) h+='<div class="dim">Two places give two mirrored zones. A third place leaves one.</div>';
       }
     }
   }
-  card.innerHTML=h;
+  var sumTxt='';
+  if((useRef||useCal)&&zres.zones&&zres.zones.length){var z0=zres.zones[0];sumTxt=(zres.zones.length>1?'Potential location #1':'Target zone')+' · accuracy '+zoneAcc(z0)+'% · '+z0.lat.toFixed(5)+', '+z0.lng.toFixed(5);}
+  else if(RF.running) sumTxt='Tracking…';
+  else sumTxt=rings.length>1?'Rough estimate':'Add places';
+  card.className=cardOpen?'':'cc';
+  card.innerHTML='<div class="chead"><span class="sum">'+sumTxt+'</span><button class="cfold" type="button" data-act="cfold" aria-label="Fold or unfold results">'+(cardOpen?'▾':'▴')+'</button></div><div class="cbody">'+h+'</div>';
 
   if(fit&&map&&bounds){
     try{
