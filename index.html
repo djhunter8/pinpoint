@@ -141,6 +141,8 @@ body.running #h-status{animation:blink 1.1s steps(2,start) infinite}
 .gov.tl{transform:translate(-50%,calc(-100% - 30px))}
 .tlbox{background:rgba(70,4,14,.94);border:1px solid var(--warn);color:#fff;box-shadow:0 0 12px rgba(255,59,74,.5);
   font:600 13px/1.25 var(--hud);letter-spacing:.07em;text-transform:uppercase;padding:3px 8px}
+.gov.tl.low{transform:translate(-50%,16px)}
+.tlbox.sm{background:rgba(5,12,22,.92);border-color:var(--warn);font-size:12px;padding:2px 7px}
 .tlbox small{display:block;font:11px var(--mono);letter-spacing:.02em;color:var(--warn);text-transform:none}
 #card .mini[disabled]{opacity:.45}
 </style>
@@ -301,6 +303,29 @@ async function findPlace(q){
   if(denied) geoErr='Turn on "Places API (New)" for your project and allow it in the key restrictions to look up place names and short links.';
   return null;
 }
+function placeIdFromFtid(s){
+  var m=s.match(/ftid=(0x[0-9a-f]+):(0x[0-9a-f]+)/i);
+  if(!m) return null;
+  try{
+    var bytes=[0x0a,0x12,0x09];
+    [m[1],m[2]].forEach(function(h,k){
+      var v=BigInt(h);
+      for(var i=0;i<8;i++){bytes.push(Number(v&255n));v>>=8n;}
+      if(k===0) bytes.push(0x11);
+    });
+    var bin='';bytes.forEach(function(b){bin+=String.fromCharCode(b);});
+    return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }catch(e){return null;}
+}
+async function placeById(id){
+  if(!state.gkey) return null;
+  try{
+    var r=await withTimeout('https://places.googleapis.com/v1/places/'+id,9000,{headers:{'X-Goog-Api-Key':state.gkey,'X-Goog-FieldMask':'location'}});
+    var j=await r.json();
+    if(j.location) return {lat:j.location.latitude,lng:j.location.longitude};
+  }catch(e){}
+  return null;
+}
 var PLAIN=/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/;
 async function resolve(text){
   text=text.trim();
@@ -310,11 +335,14 @@ async function resolve(text){
     var u=/^https?:/i.test(text)?text:'https://'+text, host='';
     try{host=new URL(u).hostname;}catch(e){return {error:'This does not look like a valid link.'};}
     if(!(/(^|\.)(goo\.gl|g\.co|share\.google)$/i.test(host)||/(^|\.)google\.[a-z.]+$/i.test(host))) return {error:'Only Google Maps links, place names or coordinates are supported.'};
-    var t=placeTextFrom(u);
-    if(!t){
+    var t=placeTextFrom(u),full=u;
+    if(!t&&!/ftid=/.test(u)){
       var fin=await expandUrl(u);
-      if(fin){c=coordsFrom(fin);if(c) return c;t=placeTextFrom(fin);}
+      if(fin){full=fin;c=coordsFrom(fin);if(c) return c;t=placeTextFrom(fin);}
     }
+    /* The place code inside the link names the exact place, so it beats guessing from the name. */
+    var pid=placeIdFromFtid(full);
+    if(pid){c=await placeById(pid);if(c) return c;}
     if(t){c=await findPlace(t);if(c) return c;if(geoErr) return {error:geoErr};}
     return {error:'Could not read this link. Paste the place name and address instead, or lat, lng.'};
   }
@@ -618,7 +646,9 @@ function idleHud(){hud('Standby','idle','Real-time intelligence');RF.accT=RF.acc
 function hideChip(){document.body.classList.remove('running');chip.hidden=true;if(RF.timer){clearInterval(RF.timer);RF.timer=null;}}
 
 /* ---------- tracking with Google routing ---------- */
-var SECONDS=30,MIN_CELL=0.025,GRUN=2400,GCAP=120,ENG_KMH={walk:5,bike:35,car:40};
+var SECONDS=30,MIN_CELL=0.025,GRUN=2400,GCAP=140,ENG_KMH={walk:5,bike:35,car:40};
+/* Fastest believable speed per mode (bounds the search area when only minutes are given) and how far Maps times can drift from Google's free-flow times. */
+var MAXKMH={walk:6.5,bike:60,car:70},TIMETOL={walk:0.15,bike:0.25,car:0.3};
 var GMODE={walk:'WALK',bike:'TWO_WHEELER',car:'DRIVE'},GURL='https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix';
 function sigNow(){return JSON.stringify(state.locs.map(function(l){return [l.c,l.mode,l.min,l.km];}));}
 function cancelRefine(){RF.gen++;RF.running=false;RF.cells=null;RF.sig=null;RF.zones=[];RF.next=null;RF.msg='';RF.gmsg='';RF.pass=0;hideChip();idleHud();}
@@ -651,7 +681,7 @@ function scoreG(rings,vals,cells,size){
       var v=vals[k][ci];if(!v){good=false;break;}
       var rg=rings[k],e;
       if(rg.kmGiven){e=Math.abs(v.d-rg.kmGiven)/(Math.max(0.05*rg.kmGiven,0.05)+slack);}
-      else{var tgt=rg.min*60;e=Math.abs(v.t-tgt)/(Math.max(0.15*tgt,60)+slack/ENG_KMH[rg.mode]*3600);}
+      else{var tgt=rg.min*60;e=Math.abs(v.t-tgt)/(Math.max(TIMETOL[rg.mode]*tgt,60)+slack/ENG_KMH[rg.mode]*3600);}
       if(e>1){good=false;break;}
       if(e>worst) worst=e;
     }
@@ -659,35 +689,62 @@ function scoreG(rings,vals,cells,size){
   });
   return kept;
 }
-function clusterCells(cells,size){
-  var n=cells.length,par=[],i,j;
+function groupCells(cells,size,link){
+  var n=cells.length,par=[],i,j,lim=link||size*1.6;
   for(i=0;i<n;i++) par[i]=i;
   function find(x){while(par[x]!==x){par[x]=par[par[x]];x=par[x];}return x;}
-  for(i=0;i<n;i++)for(j=i+1;j<n;j++) if(flatKm(cells[i],cells[j].lat,cells[j].lng)<=size*1.6) par[find(i)]=find(j);
+  for(i=0;i<n;i++)for(j=i+1;j<n;j++) if(flatKm(cells[i],cells[j].lat,cells[j].lng)<=lim) par[find(i)]=find(j);
   var groups={};
   cells.forEach(function(c,k){var r=find(k);(groups[r]=groups[r]||[]).push(c);});
-  var zones=Object.keys(groups).map(function(key){
-    var g=groups[key],sl=0,sg=0;
-    g.forEach(function(c){sl+=c.lat;sg+=c.lng;});
+  return Object.keys(groups).map(function(key){return groups[key];});
+}
+/* A zone is one connected patch of matching cells. Zones are ranked by how closely they match the numbers you entered, not by size. */
+function clusterCells(cells,size){
+  var zones=groupCells(cells,size,Math.max(size*1.6,0.2)).map(function(g){
+    var sl=0,sg=0,se=0;
+    g.forEach(function(c){sl+=c.lat;sg+=c.lng;se+=c.e;});
     var cl=sl/g.length,cg=sg/g.length,best=g[0],bd=1e9;
     g.forEach(function(c){var dd=(c.lat-cl)*(c.lat-cl)+(c.lng-cg)*(c.lng-cg);if(dd<bd){bd=dd;best=c;}});
-    return {area:g.length*size*size,lat:best.lat,lng:best.lng};
+    return {area:g.length*size*size,lat:best.lat,lng:best.lng,fit:se/g.length,cells:g};
   });
-  return zones.sort(function(a,b){return b.area-a.area;});
+  zones.sort(function(a,b){return a.fit-b.fit||b.area-a.area;});
+  var sum=0;zones.forEach(function(z){z.w=Math.exp(-3*z.fit);sum+=z.w;});
+  zones.forEach(function(z){z.share=sum?z.w/sum:1;});
+  return zones;
 }
-function subdivide(kept,size,rings){
-  var out=[],q=size/4;
-  kept.forEach(function(c){
-    var dl=q/R,dg=q/(R*Math.cos(c.lat*Math.PI/180));
-    [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(function(o){
-      var lat=c.lat+o[0]*dl,lng=c.lng+o[1]*dg,inside=true;
-      for(var k=0;k<rings.length;k++) if(flatKm(rings[k],lat,lng)>rings[k].rMax+size*0.5){inside=false;break;}
-      if(inside) out.push({lat:lat,lng:lng,e:c.e});
-    });
+function zoneAcc(z){return Math.round(Math.max(1,Math.min(99.9,(RF.narrow||0)*z.share)));}
+function hullOf(cells,size){
+  var pts=[],dl=size/R/2;
+  cells.forEach(function(c){
+    var dg=size/(R*Math.cos(c.lat*Math.PI/180))/2;
+    pts.push([c.lng-dg,c.lat-dl],[c.lng+dg,c.lat-dl],[c.lng+dg,c.lat+dl],[c.lng-dg,c.lat+dl]);
   });
-  RF.trunc=out.length>GCAP;
-  if(out.length>GCAP){out.sort(function(a,b){return a.e-b.e;});out=out.slice(0,GCAP);}
-  return out;
+  pts.sort(function(a,b){return a[0]-b[0]||a[1]-b[1];});
+  function cross(o,a,b){return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);}
+  var lo=[],up=[],i;
+  for(i=0;i<pts.length;i++){while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],pts[i])<=0) lo.pop();lo.push(pts[i]);}
+  for(i=pts.length-1;i>=0;i--){while(up.length>=2&&cross(up[up.length-2],up[up.length-1],pts[i])<=0) up.pop();up.push(pts[i]);}
+  lo.pop();up.pop();
+  return lo.concat(up).map(function(p){return {lat:p[1],lng:p[0]};});
+}
+/* Children of the kept cells. Every zone keeps a share of the budget so a small zone is never dropped for a bigger one. */
+function subdivide(kept,size,rings){
+  var q=size/4,groups=groupCells(kept,size),per=Math.max(10,Math.floor(GCAP/Math.max(1,groups.length))),all=[];
+  RF.trunc=false;
+  groups.forEach(function(g){
+    var out=[];
+    g.forEach(function(c){
+      var dl=q/R,dg=q/(R*Math.cos(c.lat*Math.PI/180));
+      [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(function(o){
+        var lat=c.lat+o[0]*dl,lng=c.lng+o[1]*dg,inside=true;
+        for(var k=0;k<rings.length;k++) if(flatKm(rings[k],lat,lng)>rings[k].rMax+size*0.5){inside=false;break;}
+        if(inside) out.push({lat:lat,lng:lng,e:c.e});
+      });
+    });
+    if(out.length>per){out.sort(function(a,b){return a.e-b.e;});out=out.slice(0,per);RF.trunc=true;}
+    all=all.concat(out);
+  });
+  return all;
 }
 function initialCells(rings){
   var s=-90,n=90,w=-180,e=180;
@@ -711,7 +768,8 @@ async function startRefine(){
     var p=parseSaved(l.c);if(!p) return;
     var r=ringFor(l,p);if(!r) return;
     var kg=parseFloat(l.km),mn=parseFloat(l.min);
-    rings.push({i:i,lat:p.lat,lng:p.lng,mode:l.mode,kmGiven:kg>0?kg:0,min:mn>0?mn:0,rMax:r.rMax*(kg>0?1.15:1.4)});
+    /* With a route km the straight-line reach is at most that km. With only minutes it is at most the fastest believable speed for that mode. */
+    rings.push({i:i,lat:p.lat,lng:p.lng,mode:l.mode,kmGiven:kg>0?kg:0,min:mn>0?mn:0,rMax:kg>0?kg*1.2:mn*MAXKMH[l.mode]/60*1.1});
   });
   if(rings.length<2) return;
   var gen=++RF.gen,continuing=!!(RF.cells&&RF.sig===sig&&RF.next&&RF.next.cells.length);
@@ -737,7 +795,10 @@ async function startRefine(){
       RF.testing=null;RF.cells=kept;RF.size=work.size;RF.zones=clusterCells(kept,work.size);
       RF.next={cells:work.size/2>=MIN_CELL?subdivide(kept,work.size,rings):[],size:work.size/2};
       var done=!kept.length||work.size<=MIN_CELL*1.01||!RF.next.cells.length;
-      setAcc(kept.length?Math.max(1,Math.min(done?99.9:98,100*(1-Math.sqrt(Math.min(1,kept.length*work.size*work.size/RF.area0))))):0);
+      /* Accuracy is how much the search area shrank, scaled by how clearly the best zone beats the other candidates. */
+      var narrow=100*(1-Math.sqrt(Math.min(1,kept.length*work.size*work.size/RF.area0)));
+      RF.narrow=narrow;
+      setAcc(kept.length?Math.max(1,Math.min(done?99.9:98,narrow*RF.zones[0].share)):0);
       render(true);
       await new Promise(function(r){setTimeout(r,1100);});
       if(gen!==RF.gen) return;
@@ -748,6 +809,7 @@ async function startRefine(){
     RF.running=false;hideChip();
     if(!RF.cells||!RF.cells.length) hud('No match','bad','Check times and travel modes');
     else if(RF.next&&RF.next.cells.length) hud('Tracking paused','idle','Tap continue for more accuracy');
+    else if(RF.zones.length>1&&RF.zones[0].share<0.85) hud('Candidates found','lock',RF.zones.length+' possible areas. Add a place to narrow it');
     else hud('Target located','lock','Verified with Google routing');
     RF.msg=!RF.cells||!RF.cells.length?'':(RF.next&&RF.next.cells.length?'Paused at '+Math.round(RF.size*1000)+' m cells.':'Finished at '+Math.round(RF.size*1000)+' m cells.');
     render(true);
@@ -797,10 +859,17 @@ function render(fit){
       add(new google.maps.Marker({map:map,position:{lat:c.lat,lng:c.lng},clickable:false,zIndex:20,
         icon:{path:google.maps.SymbolPath.CIRCLE,scale:2.6,fillColor:'#5eead4',fillOpacity:.9,strokeWeight:0}}));
     });
-    if(useRef) RF.cells.forEach(function(c){
-      var bb=llOf(c,RF.size);grow(bb.north,bb.west);grow(bb.south,bb.east);
-      add(new google.maps.Rectangle({map:map,bounds:bb,strokeColor:'#ffc53d',strokeOpacity:.6,strokeWeight:1,fillColor:'#ff3b4a',fillOpacity:.42,clickable:false,zIndex:30}));
-    });
+    if(useRef){
+      RF.zones.forEach(function(z,n){
+        var top=n===0;
+        if(z.cells.length>2) add(new google.maps.Polygon({map:map,paths:[hullOf(z.cells,RF.size)],strokeColor:'#ffc53d',strokeOpacity:top?.95:.55,strokeWeight:top?2.5:1.5,
+          fillColor:'#ff3b4a',fillOpacity:top?.22:.1,clickable:false,zIndex:28}));
+        z.cells.forEach(function(c){
+          var bb=llOf(c,RF.size);grow(bb.north,bb.west);grow(bb.south,bb.east);
+          add(new google.maps.Rectangle({map:map,bounds:bb,strokeColor:'#ffc53d',strokeOpacity:.5,strokeWeight:1,fillColor:'#ff3b4a',fillOpacity:top?.45:.25,clickable:false,zIndex:30}));
+        });
+      });
+    }
     if(zres&&zres.runs) zres.runs.forEach(function(r){
       add(new google.maps.Rectangle({map:map,bounds:r,strokeWeight:0,fillColor:'#ff3b4a',fillOpacity:.4,clickable:false,zIndex:30}));
     });
@@ -810,7 +879,9 @@ function render(fit){
         label:zres.zones.length>1?{text:String(n+1),color:'#fff',fontSize:'11px',fontWeight:'700',className:'znl'}:null}));
       if(useRef&&n===0&&Html){
         add(new Html({lat:z.lat,lng:z.lng},'<span></span>','ret')).setMap(map);
-        add(new Html({lat:z.lat,lng:z.lng},'<div class="tlbox">Triangulated location (est.)<small>'+z.lat.toFixed(5)+', '+z.lng.toFixed(5)+'</small></div>','tl')).setMap(map);
+        add(new Html({lat:z.lat,lng:z.lng},'<div class="tlbox">'+(zres.zones.length>1?'Potential location #1 · '+zoneAcc(z)+'%':'Triangulated location (est.)')+'<small>'+z.lat.toFixed(5)+', '+z.lng.toFixed(5)+'</small></div>','tl')).setMap(map);
+      }else if(useRef&&Html){
+        add(new Html({lat:z.lat,lng:z.lng},'<div class="tlbox sm">Potential location #'+(n+1)+' · '+zoneAcc(z)+'%</div>','tl low')).setMap(map);
       }
       grow(z.lat,z.lng);
     });
@@ -851,13 +922,14 @@ function render(fit){
         h+=useRef?'<div class="warn">No place on Google routes matches these numbers. Check the travel mode, time and km.</div>':'<div class="warn">No overlap in the rough estimate. Check the times and modes, or start tracking to test real routes anyway.</div>';
       }else{
         zres.zones.slice(0,4).forEach(function(z,n){
-          var c=z.lat.toFixed(5)+', '+z.lng.toFixed(5),nm=useRef?'Zone':'Rough zone';
-          h+='<div class="z"><div class="t"><strong>'+(zres.zones.length>1?nm+' '+(n+1):(useRef?'Target zone':'Rough area'))+'</strong> · '+(z.area<0.1?(z.area*100).toFixed(1)+' ha':z.area.toFixed(2)+' km²')+'<br><span class="dim">'+c+'</span></div>'+
+          var c=z.lat.toFixed(5)+', '+z.lng.toFixed(5),nm=useRef?'Potential location #':'Rough zone ',many=zres.zones.length>1;
+          h+='<div class="z"><div class="t"><strong>'+(many?nm+(n+1):(useRef?'Target zone':'Rough area'))+'</strong>'+(useRef?' · accuracy '+zoneAcc(z)+'%':'')+' · '+(z.area<0.1?(z.area*100).toFixed(1)+' ha':z.area.toFixed(2)+' km²')+'<br><span class="dim">'+c+'</span></div>'+
             '<button class="mini" type="button" data-copy="'+c+'">Copy</button>'+
             '<a class="mini" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query='+z.lat.toFixed(6)+','+z.lng.toFixed(6)+'">Open in Maps</a></div>';
         });
         if(useRef) h+='<div class="dim">Checked with Google routing, cells '+Math.round(RF.size*1000)+' m. '+RF.gUsed+' route calculations used.'+(RF.trunc?' Showing the best-matching cells only.':'')+(RF.gmsg?' '+RF.gmsg:'')+'</div>';
-        else if(rings.length===2&&zres.zones.length>1) h+='<div class="dim">Two places give two mirrored zones. A third place leaves one.</div>';
+        if(useRef&&zres.zones.length>1) h+='<div class="dim">'+(rings.length<3?'Two places can match more than one area. ':'')+'Each accuracy % combines how small the area is with how closely it fits your numbers. A third place, or exact route km for each place, narrows it to one.</div>';
+        else if(!useRef&&rings.length===2&&zres.zones.length>1) h+='<div class="dim">Two places give two mirrored zones. A third place leaves one.</div>';
       }
     }
   }
