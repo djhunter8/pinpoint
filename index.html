@@ -263,20 +263,16 @@ function withTimeout(url,ms,opts){
   var ctl=new AbortController(), t=setTimeout(function(){ctl.abort();},ms);
   return fetch(url,Object.assign({signal:ctl.signal},opts||{})).finally(function(){clearTimeout(t);});
 }
+var RESOLVER='https://warm-pika-3fa478.netlify.app/.netlify/functions/resolve';
 async function expandUrl(u){
-  /* Short links redirect on Google's side. A helper on this site follows them when it exists; a public relay is the fallback. */
+  /* A browser cannot follow Google's short-link redirect, so a small helper on Netlify does it. */
+  var base=/netlify\.app$/.test(location.hostname)?'/.netlify/functions/resolve':RESOLVER;
   try{
-    var r=await withTimeout('/.netlify/functions/resolve?u='+encodeURIComponent(u),9000);
+    var r=await withTimeout(base+'?u='+encodeURIComponent(u),10000);
     if(r.ok){var j=await r.json();if(j&&j.url) return j.url;}
   }catch(e){}
-  try{
-    var r2=await withTimeout('https://api.allorigins.win/get?url='+encodeURIComponent(u),6000);
-    var j2=await r2.json();
-    if(j2.status&&j2.status.url) return j2.status.url;
-  }catch(e){}
   return null;
-}
-function placeTextFrom(u){
+}function placeTextFrom(u){
   var t='',m=u.match(/[?&]q=([^&#]+)/);
   function dec(x){x=x.replace(/\+/g,' ');try{return decodeURIComponent(x);}catch(e){return x;}}
   if(m){t=dec(m[1]);if(/^loc:/i.test(t)) t='';}

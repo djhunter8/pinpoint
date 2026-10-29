@@ -1,8 +1,8 @@
-﻿// Follows a Google Maps short link and returns where it points.
+// Follows a Google Maps short link and returns where it points.
 // Only Google hosts are followed, and the final Google page is not fetched.
 const OK_HOST = /(^|\.)(goo\.gl|g\.co|share\.google|google\.[a-z.]+)$/i;
 const json = (o, s = 200) =>
-  new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' } });
 
 export default async (req) => {
   let url;
