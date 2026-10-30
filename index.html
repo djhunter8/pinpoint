@@ -203,7 +203,8 @@ body.running #habort{display:block}
     <label>Motorbike: shortest straight line (%)<input id="dt-bike" type="number" inputmode="numeric" step="5" min="5" max="100"></label>
     <label>Car: shortest straight line (%)<input id="dt-car" type="number" inputmode="numeric" step="5" min="5" max="100"></label>
     <small class="wide">Speeds and percentages only shape the rough preview before tracking. Tracking asks Google for the real routes. Typing the route km from Maps is more accurate than minutes. The key is saved in this browser only.</small>
-    <small class="wide">Version 7: free road search with a few Google checks. If you see "Quick estimate" on a result, you are on an older copy: close the tab and open the page again.</small>
+    <small class="wide"><b>How to read the results.</b> Red is the most likely spot. The faint outline adds a 250 m margin because OpenStreetMap and Google road maps differ a little. Accuracy combines how small the area is with how closely it fits your numbers. Nearby candidates are merged into one filled area. Two places can match more than one area, so a third place, or the exact route km for each place, narrows it to one. In my small test the margin outline held the real spot in 4 of 5 cases.</small>
+    <small class="wide">Version 8: free road search with a few Google checks. If you see "Quick estimate" on a result, you are on an older copy: close the tab and open the page again.</small>
     <button id="reset" class="wide act" type="button">Reset everything</button>
   </div>
   <div class="zoom"><button id="zin" type="button" aria-label="Zoom in">+</button><button id="zout" type="button" aria-label="Zoom out">−</button></div>
@@ -990,7 +991,7 @@ async function runHybrid(rr,gen,sig,P){
     setAcc(Math.max(1,Math.min(65,RF.narrow*RF.zones[0].share)));
     if(RF.zones.length>1&&RF.zones[0].share<0.85) hud('Candidates found','lock',RF.zones.length+' possible areas. Add a place to narrow it');
     else hud('Target located','lock',verified?'Road search plus Google checks':'Road search estimate');
-    RF.msg='Finished at '+Math.round(RF.size*1000)+' m cells.';
+    RF.msg='';
     setForm(false);render(true);
     return true;
   }catch(err){
@@ -1087,7 +1088,7 @@ async function startLite(sig){
       RF.narrow=Math.min(45,100*(1-Math.sqrt(Math.min(1,a1/ref))));
       var top=z2.zones[0].area/a1;
       setAcc(Math.max(1,RF.narrow*top));
-      RF.msg=(RF.why?'The road search could not run ('+RF.why+'), so this is the quick estimate. ':'')+'Quick estimate from '+RF.gUsed+' Google routes'+(osmN?' plus '+osmN+' free OpenStreetMap test routes':'')+'. In my tests the real spot was inside the zone about 8 times in 10. Raise the route limit in settings for a sharper result.';
+      RF.msg=(RF.why?'Road search unavailable ('+RF.why+'). ':'')+'Quick estimate.';
       if(z2.zones.length>1) hud('Candidates found','lock',z2.zones.length+' possible areas. Add a place to narrow it');
       else hud('Estimate ready','lock','Calibrated with '+RF.gUsed+' real routes');
       setForm(false);
@@ -1279,10 +1280,8 @@ function render(fit){
             '<button class="mini" type="button" data-copy="'+c+'">Copy</button>'+
             '<a class="mini" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query='+z.lat.toFixed(6)+','+z.lng.toFixed(6)+'">Open in Maps</a></div>';
         });
-        if(useRef) h+='<div class="dim">'+(RF.hyb?'Searched the road network with free OpenStreetMap routing ('+RF.hyb+' routes), then checked '+RF.gUsed+' spots with Google. Cells '+Math.round(RF.size*1000)+' m. Red is the most likely spot. The faint outline adds a 250 m margin because the two road maps differ a little; in my small test it held the real spot in 4 of 5 cases.':'Checked with Google routing, cells '+Math.round(RF.size*1000)+' m. '+RF.gUsed+' route calculations used.')+(RF.trunc?' Showing the best-matching cells only.':'')+(RF.gmsg?' '+RF.gmsg:'')+'</div>';
-        if(useRef&&zres.zones.some(function(z){return z.filled;})) h+='<div class="dim">Nearby candidates were merged into one filled area.</div>';
-        if((useRef||useCal)&&zres.zones.length>1) h+='<div class="dim">'+(rings.length<3?'Two places can match more than one area. ':'')+'Each accuracy % combines how small the area is with how closely it fits your numbers. A third place, or exact route km for each place, narrows it to one.</div>';
-        else if(!useRef&&rings.length===2&&zres.zones.length>1) h+='<div class="dim">Two places give two mirrored zones. A third place leaves one.</div>';
+        if(useRef&&RF.gmsg) h+='<div class="dim">'+RF.gmsg+'</div>';
+        if(!useRef&&rings.length===2&&zres.zones.length>1) h+='<div class="dim">Two places give two mirrored zones. A third place leaves one.</div>';
       }
     }
   }
